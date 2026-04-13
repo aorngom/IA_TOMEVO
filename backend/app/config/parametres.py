@@ -10,8 +10,6 @@ class Parametres(BaseSettings):
 
     class Config:
         env_file = ".env"
-        # Cette ligne permet d'éviter les erreurs si autres 
-        # variables dans ton .env que tu n'as pas encore déclarées ici
         extra = "ignore" 
 
 parametres = Parametres()
