@@ -1,0 +1,61 @@
+/* Sidebar plus large */
+.sidebar {
+  width: 300px;
+  margin: 20px;
+  height: calc(100vh - 40px);
+}
+
+/* Header plus imposant */
+.admin-header {
+  margin-left: 340px;
+  margin-top: 20px;
+  margin-right: 20px;
+  padding: 20px 30px;
+}
+
+.admin-header h1, .admin-header .h4 {
+  font-size: 1.8rem !important;
+  font-weight: 800;
+}
+
+.admin-content {
+  margin-left: 340px;
+  padding: 30px;
+}
+
+/* ── Chat Zoomé ── */
+.ai-message {
+  padding: 30px;
+  font-size: 1.15rem; /* Texte de l'IA plus grand */
+  line-height: 1.6;
+  max-width: 90%;
+  border-left-width: 8px; /* Barre rouge plus épaisse */
+}
+
+.user-message {
+  padding: 20px 30px;
+  font-size: 1.1rem;
+  max-width: 85%;
+}
+
+/* Zone d'écriture plus grande */
+.chat-input-wrapper {
+  padding: 15px 30px;
+  border-radius: 16px;
+  min-height: 70px;
+}
+
+.chat-input-wrapper input {
+  font-size: 1.2rem;
+}
+
+/* Zone d'upload OCR plus visible */
+.upload-zone {
+  padding: 60px 40px;
+  border-width: 3px;
+}
+
+.upload-zone p {
+  font-size: 1.3rem;
+  font-weight: 600;
+}

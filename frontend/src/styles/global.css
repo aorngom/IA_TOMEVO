@@ -1,0 +1,29 @@
+@import './variables.css';
+
+html {
+  font-size: var(--font-size-base);
+}
+
+body {
+  font-family: 'Inter', system-ui, sans-serif;
+  background-color: var(--couleur-fond);
+  color: #1e293b;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Boutons plus massifs */
+.btn-principal {
+  padding: 16px 32px;
+  font-size: 1.1rem;
+  font-weight: 700;
+  border-radius: 12px;
+}
+
+/* Tableaux plus larges et lisibles */
+.table {
+  font-size: 1rem;
+}
+
+.table tbody td {
+  padding: 24px 20px;
+}

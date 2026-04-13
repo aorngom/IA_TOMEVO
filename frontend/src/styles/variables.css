@@ -1,0 +1,15 @@
+:root {
+  --couleur-principale: #E63946;
+  --couleur-principale-dark: #C1121F;
+  --couleur-principale-light: #FF8E96;
+  --couleur-sombre: #0F172A;
+  --couleur-fond: #F1F5F9;
+  --couleur-blanc: #FFFFFF;
+
+  /* Tailles augmentées pour l'effet Zoom */
+  --font-size-base: 18px; /* Passage de 16px à 18px */
+  --bordure-radius: 20px;
+  --transition: all 0.3s ease;
+  
+  --ombre-douce: 0 12px 30px rgba(0, 0, 0, 0.06);
+}
