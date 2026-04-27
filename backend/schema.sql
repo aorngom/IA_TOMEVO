@@ -207,3 +207,93 @@ INSERT INTO employe (
     (SELECT id FROM departement WHERE nom='Élevage'), '2026-01-15', 280000.00
 );
 
+-- 1. Ajout de la table RÉUNION
+CREATE TABLE reunion (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    sujet VARCHAR(255) NOT NULL,
+    date_heure TIMESTAMP WITH TIME ZONE NOT NULL,
+    lieu VARCHAR(255), -- Peut contenir un lien Teams/Zoom ou une salle
+    ordre_du_jour TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 2. Table de liaison pour les PARTICIPANTS (Many-to-Many)
+CREATE TABLE participants_reunion (
+    reunion_id UUID REFERENCES reunion(id) ON DELETE CASCADE,
+    employe_id UUID REFERENCES employe(id) ON DELETE CASCADE,
+    presence_confirmee BOOLEAN DEFAULT FALSE,
+    PRIMARY KEY (reunion_id, employe_id)
+);
+
+-- 3. Enrichissement de la table EMPLOYE (Champs manquants pour l'ERP)
+ALTER TABLE employe 
+ADD COLUMN IF NOT EXISTS departement_service VARCHAR(100),
+ADD COLUMN IF NOT EXISTS niveau_etude VARCHAR(100),
+ADD COLUMN IF NOT EXISTS competences TEXT, -- Stocke les compétences sous forme de liste texte
+ADD COLUMN IF NOT EXISTS type_contrat_actuel VARCHAR(50);
+
+-- 4. Ajout d'une table pour l'HISTORIQUE (Promotions/Changements)
+CREATE TABLE historique_carriere (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    employe_id UUID REFERENCES employe(id) ON DELETE CASCADE,
+    ancien_poste VARCHAR(100),
+    nouveau_poste VARCHAR(100),
+    date_changement DATE DEFAULT CURRENT_DATE,
+    motif TEXT
+);
+
+-- Index pour accélérer les recherches de l'IA
+CREATE INDEX idx_emp_matricule ON employe(matricule);
+CREATE INDEX idx_reunion_date ON reunion(date_heure);
+
+-- Une conversation = une session de chat
+CREATE TABLE conversation_ia (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    session_id VARCHAR(100) UNIQUE NOT NULL,
+    titre VARCHAR(255),          -- généré du 1er message user
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Chaque message de la conversation
+CREATE TABLE message_ia (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    conversation_id UUID REFERENCES conversation_ia(id) ON DELETE CASCADE,
+    role VARCHAR(20) NOT NULL,   -- 'user' ou 'assistant'
+    content TEXT NOT NULL,
+    action VARCHAR(50),          -- 'OUVRIR_FORMULAIRE', 'REUNION_CREEE', null
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Index pour accélérer les recherches par session
+CREATE INDEX IF NOT EXISTS idx_conv_session ON conversation_ia(session_id);
+CREATE INDEX IF NOT EXISTS idx_msg_conversation ON message_ia(conversation_id);
+
+-- Trigger pour updated_at
+CREATE TRIGGER trg_upd_conv_ia
+    BEFORE UPDATE ON conversation_ia
+    FOR EACH ROW EXECUTE PROCEDURE update_updated_at_column();
+
+
+
+-- Accorder les droits sur les tables de l'historique IA
+GRANT ALL PRIVILEGES ON TABLE conversation_ia TO poulet_admin;
+GRANT ALL PRIVILEGES ON TABLE message_ia TO poulet_admin;
+
+-- Accorder les droits sur les tables de réunions (pour éviter un futur crash)
+GRANT ALL PRIVILEGES ON TABLE reunion TO poulet_admin;
+GRANT ALL PRIVILEGES ON TABLE participants_reunion TO poulet_admin;
+
+-- Important : Accorder les droits sur toutes les séquences 
+-- (nécessaire pour l'auto-incrémentation des IDs si présents)
+GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO poulet_admin;
+
+
+-- Donne les droits sur TOUTES les tables nécessaires
+GRANT ALL PRIVILEGES ON TABLE conversation_ia TO poulet_admin;
+GRANT ALL PRIVILEGES ON TABLE message_ia TO poulet_admin;
+GRANT ALL PRIVILEGES ON TABLE reunion TO poulet_admin;
+GRANT ALL PRIVILEGES ON TABLE participants_reunion TO poulet_admin;
+
+-- Donne les droits sur les séquences (indispensable pour l'insertion)
+GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO poulet_admin;

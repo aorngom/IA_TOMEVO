@@ -104,3 +104,61 @@ FROM (VALUES
     ('client3@gmail.com', 'en_attente', 5500.00, 'orange_money', 'Médina, Dakar')
 ) AS v(email, statut, montant_total, mode_paiement, adresse_livraison)
 JOIN utilisateur u ON u.email = v.email;
+
+
+
+INSERT INTO reunion (sujet, date_heure, lieu, ordre_du_jour) VALUES 
+('Point Hebdomadaire Logistique', '2026-04-22 09:00:00+00', 'Salle de Conférence A', 'Suivi des livraisons, gestion des stocks et planning des chauffeurs.'),
+('Comité de Direction - Stratégie Q3', '2026-04-25 14:30:00+00', 'Lien Teams: teams.microsoft.com/l/meetup-join/abc123...', 'Analyse des performances du trimestre, validation des budgets recrutement.');
+
+-- On invite Abdoulaye Diallo (EMP-2026-009) à la réunion logistique
+INSERT INTO participants_reunion (reunion_id, employe_id, presence_confirmee)
+VALUES (
+    (SELECT id FROM reunion WHERE sujet = 'Point Hebdomadaire Logistique' LIMIT 1),
+    (SELECT id FROM employe WHERE matricule = 'EMP-2026-009' LIMIT 1),
+    TRUE
+);
+
+-- On invite Mamadou Ndiaye (EMP-2026-005) à la même réunion
+INSERT INTO participants_reunion (reunion_id, employe_id, presence_confirmee)
+VALUES (
+    (SELECT id FROM reunion WHERE sujet = 'Point Hebdomadaire Logistique' LIMIT 1),
+    (SELECT id FROM employe WHERE matricule = 'EMP-2026-005' LIMIT 1),
+    FALSE
+);
+
+UPDATE employe 
+SET 
+    departement_service = 'Opérations Terrain',
+    niveau_etude = 'Baccalauréat',
+    competences = 'Conduite poids lourd, Logistique urbaine, Maintenance préventive',
+    type_contrat_actuel = 'CDI'
+WHERE matricule = 'EMP-2026-009';
+
+UPDATE employe 
+SET 
+    departement_service = 'Support Technique',
+    niveau_etude = 'Licence Professionnelle',
+    competences = 'Maintenance avicole, Gestion sanitaire, Audit de ferme',
+    type_contrat_actuel = 'CDD'
+WHERE matricule = 'EMP-2026-005';
+
+-- Promotion pour Mamadou Ndiaye
+INSERT INTO historique_carriere (employe_id, ancien_poste, nouveau_poste, date_changement, motif)
+VALUES (
+    (SELECT id FROM employe WHERE matricule = 'EMP-2026-005' LIMIT 1),
+    'Stagiaire Avicole',
+    'Technicien Avicole',
+    '2026-01-15',
+    'Validation de la période de stage avec félicitations du jury technique.'
+);
+
+-- Mutation pour un autre employé
+INSERT INTO historique_carriere (employe_id, ancien_poste, nouveau_poste, date_changement, motif)
+VALUES (
+    (SELECT id FROM employe WHERE matricule = 'EMP-2026-009' LIMIT 1),
+    'Chauffeur Junior',
+    'Livreur',
+    '2026-03-01',
+    'Réorganisation du département Logistique pour le secteur Dakar-Plateau.'
+);

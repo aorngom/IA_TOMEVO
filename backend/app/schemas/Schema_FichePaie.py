@@ -3,6 +3,7 @@ from typing import Optional
 from datetime import datetime
 import uuid
 
+
 class EmployeSimple(BaseModel):
     id: uuid.UUID
     matricule: str
@@ -13,6 +14,7 @@ class EmployeSimple(BaseModel):
     class Config:
         from_attributes = True
 
+
 class FichePaieCreation(BaseModel):
     employe_id: uuid.UUID
     periode_mois: int
@@ -20,15 +22,16 @@ class FichePaieCreation(BaseModel):
     salaire_brut: float
     salaire_net: float
 
+
 class FichePaieReponse(BaseModel):
     id: uuid.UUID
-    employe_id: uuid.UUID
+    employe_id: Optional[uuid.UUID] = None  
     periode_mois: int
     periode_annee: int
     salaire_brut: float
     salaire_net: float
-    date_generation: Optional[datetime]
-    employe: Optional[EmployeSimple]
+    date_generation: Optional[datetime] = None
+    employe: Optional[EmployeSimple] = None
 
     class Config:
         from_attributes = True

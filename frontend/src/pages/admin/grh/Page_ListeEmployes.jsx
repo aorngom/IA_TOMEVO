@@ -152,8 +152,7 @@ export default function Page_ListeEmployes() {
     )
 }
 
-// ─── Formulaire d'ajout intégré ───────────────────────────────
-function Form_AjoutEmploye({ onFermer, onSuccess }) {
+export function Form_AjoutEmploye({ onFermer, onSuccess, donneesIA }) {
     const [postes, setPostes] = useState([])
     const [departements, setDepartements] = useState([])
     const [erreur, setErreur] = useState('')
@@ -171,6 +170,20 @@ function Form_AjoutEmploye({ onFermer, onSuccess }) {
         date_embauche: '', salaire_base_contrat: ''
     })
 
+    //  LOGIQUE DE VALIDATION STRICTE 
+    const estValide = 
+        form.nom && form.prenom && form.matricule && 
+        form.salaire_base_contrat && form.date_embauche && 
+        form.date_naissance && form.poste_id && 
+        form.departement_id && form.civilite && 
+        form.situation_matrimoniale && form.adresse_residentielle;
+
+    useEffect(() => {
+        if (donneesIA) {
+            setForm(prev => ({ ...prev, ...donneesIA }));
+        }
+    }, [donneesIA]);
+
     useEffect(() => {
         Service_Employe.listerPostes().then(r => setPostes(r.data))
         Service_Employe.listerDepartements().then(r => setDepartements(r.data))
@@ -183,6 +196,8 @@ function Form_AjoutEmploye({ onFermer, onSuccess }) {
 
     const handleSubmit = async e => {
         e.preventDefault()
+        if(!estValide) return; // Sécurité supplémentaire
+        
         setErreur('')
         setChargement(true)
         try {
@@ -208,11 +223,19 @@ function Form_AjoutEmploye({ onFermer, onSuccess }) {
                 <div className="modal-content">
                     <div className="modal-header bg-primary text-white">
                         <h5 className="modal-title">
-                            <i className="bi bi-person-plus me-2"></i>Ajouter un employé
+                            <i className="bi bi-person-plus me-2"></i>
+                            {donneesIA ? "Vérification des données IA" : "Ajouter un employé"}
                         </h5>
                         <button className="btn-close btn-close-white" onClick={onFermer}></button>
                     </div>
                     <div className="modal-body">
+                        {donneesIA && (
+                            <div className="alert alert-info border-info py-2">
+                                <i className="bi bi-robot me-2"></i>
+                                <strong>Assistant IA :</strong> J'ai pré-rempli le formulaire. Merci de vérifier les champs en bleu avant de valider.
+                            </div>
+                        )}
+
                         {erreur && (
                             <div className="alert alert-danger">
                                 <i className="bi bi-exclamation-triangle me-2"></i>{erreur}
@@ -261,8 +284,8 @@ function Form_AjoutEmploye({ onFermer, onSuccess }) {
                                     <input name="num_securite_sociale" className="form-control" value={form.num_securite_sociale} onChange={handleChange} />
                                 </div>
                                 <div className="col-md-4">
-                                    <label className="form-label">Situation matrimoniale</label>
-                                    <select name="situation_matrimoniale" className="form-select" value={form.situation_matrimoniale} onChange={handleChange}>
+                                    <label className="form-label">Situation matrimoniale *</label>
+                                    <select name="situation_matrimoniale" className="form-select" value={form.situation_matrimoniale} onChange={handleChange} required>
                                         <option>Célibataire</option>
                                         <option>Marié(e)</option>
                                         <option>Veuf(ve)</option>
@@ -308,8 +331,8 @@ function Form_AjoutEmploye({ onFermer, onSuccess }) {
                             </h6>
                             <div className="row g-3 mb-4">
                                 <div className="col-md-4">
-                                    <label className="form-label">Poste</label>
-                                    <select name="poste_id" className="form-select" value={form.poste_id} onChange={handleChange}>
+                                    <label className="form-label">Poste *</label>
+                                    <select name="poste_id" className="form-select" value={form.poste_id} onChange={handleChange} required>
                                         <option value="">-- Sélectionner --</option>
                                         {postes.map(p => (
                                             <option key={p.id} value={p.id}>{p.libelle}</option>
@@ -317,8 +340,8 @@ function Form_AjoutEmploye({ onFermer, onSuccess }) {
                                     </select>
                                 </div>
                                 <div className="col-md-4">
-                                    <label className="form-label">Département</label>
-                                    <select name="departement_id" className="form-select" value={form.departement_id} onChange={handleChange}>
+                                    <label className="form-label">Département *</label>
+                                    <select name="departement_id" className="form-select" value={form.departement_id} onChange={handleChange} required>
                                         <option value="">-- Sélectionner --</option>
                                         {departements.map(d => (
                                             <option key={d.id} value={d.id}>{d.nom}</option>
@@ -331,7 +354,15 @@ function Form_AjoutEmploye({ onFermer, onSuccess }) {
                                 </div>
                                 <div className="col-md-4">
                                     <label className="form-label">Salaire de base (FCFA) *</label>
-                                    <input type="number" name="salaire_base_contrat" className="form-control" value={form.salaire_base_contrat} onChange={handleChange} required min="0" />
+                                    <input 
+                                        type="number" 
+                                        name="salaire_base_contrat" 
+                                        className={`form-control ${donneesIA ? 'border-primary border-2 fw-bold text-primary' : ''}`} 
+                                        value={form.salaire_base_contrat} 
+                                        onChange={handleChange} 
+                                        required 
+                                        min="0" 
+                                    />
                                 </div>
                             </div>
 
@@ -351,21 +382,26 @@ function Form_AjoutEmploye({ onFermer, onSuccess }) {
                             </div>
                         </form>
                     </div>
-                    <div className="modal-footer">
-                        <button className="btn btn-secondary" onClick={onFermer}>
-                            <i className="bi bi-x me-2"></i>Annuler
-                        </button>
-                        <button
-                            type="submit"
-                            form="form-employe"
-                            className="btn btn-primary"
-                            disabled={chargement}
-                        >
-                            {chargement
-                                ? <><span className="spinner-border spinner-border-sm me-2"></span>Enregistrement...</>
-                                : <><i className="bi bi-check2 me-2"></i>Enregistrer l'employé</>
-                            }
-                        </button>
+                    <div className="modal-footer d-flex justify-content-between w-100">
+                        <div className="text-danger small">
+                            {!estValide && <><i className="bi bi-info-circle me-1"></i>Veuillez remplir tous les champs obligatoires (*)</>}
+                        </div>
+                        <div>
+                            <button className="btn btn-secondary me-2" onClick={onFermer}>
+                                <i className="bi bi-x me-2"></i>Annuler
+                            </button>
+                            <button
+                                type="submit"
+                                form="form-employe"
+                                className={`btn ${estValide ? 'btn-primary' : 'btn-outline-secondary'}`}
+                                disabled={chargement || !estValide}
+                            >
+                                {chargement
+                                    ? <><span className="spinner-border spinner-border-sm me-2"></span>Enregistrement...</>
+                                    : <><i className="bi bi-check2 me-2"></i>Enregistrer l'employé</>
+                                }
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>

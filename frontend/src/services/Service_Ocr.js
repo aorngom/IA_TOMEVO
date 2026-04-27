@@ -1,5 +1,5 @@
 import Service_Api from './Service_Api'
-
+ 
 const Service_Ocr = {
     analyser: (fichier) => {
         const formData = new FormData()
@@ -8,8 +8,14 @@ const Service_Ocr = {
             headers: { 'Content-Type': 'multipart/form-data' }
         })
     },
-    chat: (messages, contexte) =>
-        Service_Api.post('/ocr/chat', { messages, contexte }),
+ 
+    chat: (messages, contexte, sessionId) =>
+        Service_Api.post('/ocr/chat', {
+            messages,
+            contexte,
+            session_id: sessionId ?? null
+        }),
 }
-
+ 
 export default Service_Ocr
+ 

@@ -11,6 +11,9 @@ from app.routes.Route_Auth import router as auth_router
 from app.routes.Route_Employes import router as employes_router
 from app.routes.Route_FichesPaie import router as paie_router
 from app.routes.Route_Ocr import router as ocr_router
+# Nouveaux imports
+from app.routes.Route_ConversationIA import router as conversation_router
+from app.routes.Route_Reunion import router as reunion_router
 
 app = FastAPI(title="Poulet App API", version="1.0.0")
 
@@ -28,6 +31,8 @@ app.include_router(auth_router, prefix="/auth", tags=["Authentification"])
 app.include_router(employes_router, prefix="/employes", tags=["Employés"])
 app.include_router(paie_router, prefix="/paie", tags=["Fiches de Paie"])
 app.include_router(ocr_router, prefix="/ocr", tags=["OCR"])
+app.include_router(conversation_router, prefix="/conversations-ia", tags=["Historique IA"])
+app.include_router(reunion_router, prefix="/reunions", tags=["Réunions"])
 
 @app.on_event("startup")
 async def startup_event():
