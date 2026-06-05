@@ -91,21 +91,22 @@ async def chat_document(payload: ChatPayload, db: Session = Depends(get_db)):
                         "departement": {
                             "type": "string", 
                             "enum": liste_deps, 
-                            "description": "Valeur EXACTE avec accents requise (ex: 'Élevage' et non 'Elevage')."
+                            "description": "Valeur EXACTE avec accents requise (ex: 'Élevage')."
                         },
-                       "poste": {"type": "string", "enum": liste_postes},
+                        "poste": {"type": "string", "enum": liste_postes},
                         "situation_matrimoniale": {
                             "type": "string", 
                             "enum": ["Célibataire", "Marié(e)", "Veuf(ve)", "Divorcé(e)"], 
                             "description": "Valeur EXACTE requise avec accents."
-                        },                         "adresse_residentielle": {"type": "string"},
-                        "telephone": {"type": "string"},
-                        "email_personnel": {"type": "string"},
-                        "num_cni": {"type": "string"},
+                        },
+                        "adresse_residentielle": {"type": "string"},
+                        "telephone_perso": {"type": "string", "description": "Numero de telephone personnel (ex: +22177...)"},
+                        "email_perso": {"type": "string", "description": "Email personnel de l'employe"},
+                        "num_cni": {"type": "string", "description": "Numero de carte nationale d'identite"},
                         "lieu_naissance": {"type": "string"},
-                        "num_securite_sociale": {"type": "string"},
+                        "num_securite_sociale": {"type": "string", "description": "Numero IPRES/CSS"},
                         "quartier": {"type": "string"},
-                        "banque": {"type": "string"},
+                        "nom_banque": {"type": "string", "description": "Nom de la banque (ex: CBAO, BICIS)"},
                         "rib_iban": {"type": "string"}
                     },
                     "required": ["nom", "prenom", "matricule", "salaire_base_contrat", "departement", "poste"]
@@ -197,46 +198,33 @@ async def chat_document(payload: ChatPayload, db: Session = Depends(get_db)):
 
     # SYSTEM PROMPT 
     system_prompt = (
-        f"Tu es l'intelligence de gestion centrale de Jariniou.\n\n"
-        f"1. ANALYSE MULTIMODALE : Tu analyses les images de documents. Ton role est d'extraire les donnees textuelles et numeriques.\n\n"
-        f"2. DISCRETION : Reponds poliment aux salutations. Ne donne les infos BDD que si on te le demande precisement.\n\n"
-        f"3. RECOLTE STRICTE : Verifie qu'il ne manque rien d'essentiel. "
-        f"NE DECLENCHE PAS le formulaire tant que tu n'as pas recolte les informations necessaires, sauf demande explicite de l'utilisateur.\n\n"
-        f"4. REUNIONS : Processus OBLIGATOIRE en 3 etapes :\n"
-        f"   ETAPE 1 : Demande le sujet, les participants (nom ou matricule), la date/heure et le lieu si non precises.\n"
-        f"   ETAPE 2 : Une fois TOUTES les infos collectees, resous les UUIDs des participants depuis la liste fournie.\n"
-        f"   ETAPE 3 : Seulement quand tu as sujet + date_heure + au moins un employe_id valide, utilise l'outil 'organiser_reunion'.\n"
-        f"   NE JAMAIS appeler organiser_reunion sans avoir un tableau employe_ids contenant des UUIDs valides.\n\n"
-        f"Si des noms sont ambigus, liste les correspondances possibles et demande confirmation.\n\n"
-        f"5. MODIFICATION EMPLOYE : Processus OBLIGATOIRE en 3 etapes :\n"
-        f"   ETAPE 1 : Si l'utilisateur ne precise pas quel employe modifier, demande-lui le nom ou matricule.\n"
-        f"   ETAPE 2 : Une fois l'employe identifie et les modifications precisees, recapitule les changements "
-        f"et demande UNE CONFIRMATION EXPLICITE ('Confirmez-vous ces modifications ? Repondez OUI pour valider.').\n"
-        f"   ETAPE 3 : Seulement apres que l'utilisateur dit OUI ou confirme, utilise l'outil 'modifier_employe'.\n"
-        f"   NE JAMAIS modifier sans avoir obtenu confirmation explicite.\n\n"
-        f"6. SUPPRESSION EMPLOYE : Processus OBLIGATOIRE en 3 etapes :\n"
-        f"   ETAPE 1 : Si l'utilisateur ne precise pas quel employe supprimer, demande le nom ou matricule.\n"
-        f"   ETAPE 2 : Une fois identifie, affiche le nom complet et demande UNE CONFIRMATION EXPLICITE "
-        f"('Confirmez-vous la suppression de [NOM] ? Cette action est IRREVERSIBLE. Repondez OUI pour confirmer.').\n"
-        f"   ETAPE 3 : Seulement apres OUI explicite, utilise l'outil 'supprimer_employe'.\n"
-        f"   NE JAMAIS supprimer sans confirmation explicite.\n\n"
-        f"7. QUALITE : Utilise des tableaux Markdown. Mets les noms et matricules en **gras**.\n\n"
-        f"8. SERIEUX : Pas d'emojis. Tres poli et expert.\n\n"
-        f"9. RECOLTE EXHAUSTIVE : Pour un dossier complet, tu as besoin de : {', '.join(champs_complets)}. "
-        f"IMPORTANT: Formate toujours les dates en YYYY-MM-DD." 
-        f"CONSIGNE CRITIQUE : Pour le departement et la situation matrimoniale, utilise TOUJOURS les accents. "
-        f"Ecris 'Élevage' (avec É majuscule), 'Célibataire', 'Marié(e)', 'Divorcé(e)'. "
-        f"Si une info manque, previens que l'ouverture se fera apres 5 secondes.\n\n"
-        f"10. PROTECTION : Ne donne que Nom, Matricule et Poste par defaut pour les listes d'employes.\n\n"
-        f"CONTEXTE ACTUEL :\n"
-        f"- Connaissances BDD : {infos_bdd}\n"
-        f"- Liste des employes actifs : {infos_employes}\n"
-        f"- Analyse document (OCR) : {payload.contexte}"
-        f"11. DESACTIVATION vs SUPPRESSION : Par defaut, quand on te demande de 'supprimer' un employe, "
-        f"propose TOUJOURS en premier de le desactiver (actif = false) plutot que de le supprimer definitivement. "
-        f"Explique que la desactivation preserve l'historique de paie. "
-        f"Utilise l'outil 'modifier_employe' avec 'actif: false' pour desactiver. "
-        f"Ne procede a la suppression physique que si l'utilisateur insiste explicitement apres avoir ete informe.\n\n"
+        f"Tu es l'assistant RH intelligent de Jariniou. Tu gères les employés, les réunions et l'analyse de documents. Ne prends pas trop de temps pour répondre, l'utilisateur est une personne occupée.\n\n"
+        f"RÈGLES GÉNÉRALES :\n"
+        f"- Réponds en français, de manière professionnelle et sans emojis.\n"
+        f"- Utilise des tableaux Markdown et mets les noms/matricules en **gras**.\n"
+        f"- Ne divulgue les informations des employés que si explicitement demandé.\n\n"
+        f"CRÉATION D'EMPLOYÉ :\n"
+        f"- Collecte tous les champs nécessaires : {', '.join(champs_complets)}.\n"
+        f"- Dates toujours en YYYY-MM-DD.\n"
+        f"- Ne déclenche le formulaire que si tu as au minimum : nom, prénom, matricule, salaire, poste, département.\n"
+        f"- Si des informations manquent et que l'utilisateur insiste, ouvre quand même le formulaire en signalant les champs manquants.\n\n"
+        f"MODIFICATION D'EMPLOYÉ :\n"
+        f"- Identifie l'employé via la liste fournie (nom, prénom ou matricule).\n"
+        f"- Demande confirmation avant d'agir : récapitule les changements et attends un OUI explicite.\n"
+        f"- Ne modifie que les champs mentionnés par l'utilisateur.\n\n"
+        f"SUPPRESSION D'EMPLOYÉ :\n"
+        f"- Propose toujours la désactivation (actif=false) en premier, en expliquant que cela préserve l'historique de paie.\n"
+        f"- Si l'utilisateur insiste pour supprimer définitivement, demande une confirmation explicite avant d'agir.\n\n"
+        f"RÉUNIONS :\n"
+        f"- Collecte : sujet, participants (identifiés dans la liste), date/heure et lieu.\n"
+        f"- Résous les UUIDs des participants depuis la liste fournie avant d'appeler l'outil.\n"
+        f"- N'appelle jamais l'outil sans avoir au moins un UUID valide dans employe_ids.\n\n"
+        f"ANALYSE OCR :\n"
+        f"- Si un document est fourni, extrais les informations et propose de pré-remplir le formulaire.\n\n"
+        f"DONNÉES DISPONIBLES :\n"
+        f"- Départements et postes : {infos_bdd}\n"
+        f"- Employés actifs : {infos_employes}\n"
+        f"- Résultat OCR : {payload.contexte}\n"
     )
 
     messages = [{"role": "system", "content": system_prompt}]
@@ -250,12 +238,10 @@ async def chat_document(payload: ChatPayload, db: Session = Depends(get_db)):
     try:
         async with httpx.AsyncClient(timeout=60.0) as client:
             reponse = await client.post(
-                "https://api.groq.com/openai/v1/chat/completions",
+                "https://api.openai.com/v1/chat/completions", # URL OpenAI
                 headers={"Authorization": f"Bearer {api_key}"},
                 json={
-                    "model": "llama-3.3-70b-versatile",
-                    #"model": "llama-3.1-8b-instant",
-                    #"model": "llama-3.1-70b-versatile",
+                    "model": "gpt-4o-mini", # Modèle OpenAI
                     "messages": messages,
                     "tools": tools,
                     "tool_choice": "auto"
@@ -478,12 +464,29 @@ async def analyser_document(fichier: UploadFile = File(...)):
     else:
         image_b64 = base64.b64encode(contenu).decode("utf-8")
     payload = {
-        "model": "meta-llama/llama-4-scout-17b-16e-instruct",
+        "model": "gpt-4o-mini",
         "messages": [
             {
                 "role": "user",
                 "content": [
-                    {"type": "text", "text": "Analyse ce document RH. Si c'est pour un employe, extrais Nom, Prenom, Matricule, Poste, Departement, Salaire, Dates, Adresse, CNI, Telephone et RIB."},
+                    {"type": "text", 
+                     "text": (
+                            "Analyse ce document RH de manière extrêmement complète et minutieuse. "
+                            "Tu dois extraire TOUTES les informations visibles sans exception et les lister en Markdown (Ce n'est pas la peine de préciser que tu les formates en Markdown) :\n"
+                            "- Civilité, Nom, Prénom\n"
+                            "- Matricule\n"
+                            "- Date de naissance et Lieu de naissance\n"
+                            "- Situation matrimoniale et Nombre d'enfants\n"
+                            "- Numéro de CNI complet\n"
+                            "- Numéro de Sécurité Sociale (IPRES/CSS)\n"
+                            "- Adresse résidentielle détaillée, Ville et Quartier séparés\n"
+                            "- Téléphone personnel et Email personnel\n"
+                            "- Poste exact et Département exact\n"
+                            "- Date d'embauche et Salaire de base (FCFA)\n"
+                            "- Banque et RIB / IBAN complet.\n\n"
+                            "Prends ton temps, sois exhaustif. Si l'information est écrite sur l'image, tu dois l'extraire."
+                        )
+                    },
                     {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{image_b64}"}}
                 ]
             }
@@ -492,7 +495,7 @@ async def analyser_document(fichier: UploadFile = File(...)):
     try:
         async with httpx.AsyncClient(timeout=60.0) as client:
             reponse = await client.post(
-                "https://api.groq.com/openai/v1/chat/completions",
+                "https://api.openai.com/v1/chat/completions",
                 headers={"Authorization": f"Bearer {api_key}"},
                 json=payload
             )

@@ -14,7 +14,7 @@ from app.routes.Route_Ocr import router as ocr_router
 # Nouveaux imports
 from app.routes.Route_ConversationIA import router as conversation_router
 from app.routes.Route_Reunion import router as reunion_router
-
+from app.routes.Route_PaieIA import router as paie_ia_router
 app = FastAPI(title="Poulet App API", version="1.0.0")
 
 # 3. Configuration du Middleware CORS
@@ -33,6 +33,8 @@ app.include_router(paie_router, prefix="/paie", tags=["Fiches de Paie"])
 app.include_router(ocr_router, prefix="/ocr", tags=["OCR"])
 app.include_router(conversation_router, prefix="/conversations-ia", tags=["Historique IA"])
 app.include_router(reunion_router, prefix="/reunions", tags=["Réunions"])
+app.include_router(paie_ia_router, prefix="/paie-ia")
+
 
 @app.on_event("startup")
 async def startup_event():

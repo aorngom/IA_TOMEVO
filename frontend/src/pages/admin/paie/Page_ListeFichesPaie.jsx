@@ -1,12 +1,289 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
+import { v4 as uuidv4 } from 'uuid'
 import Service_FichePaie from '../../../services/Service_FichePaie'
 import Service_Employe from '../../../services/Service_Employe'
+import Service_PaieIA from '../../../services/Service_PaieIA'
 
 const MOIS = [
     'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
     'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'
 ]
 
+// ─── Composant Agent IA Paie ──────────────────────────────────
+function AgentPaiePanel({ onFermer, onRafraichir }) {
+    const [sessionId] = useState(() => uuidv4())
+    const [messages, setMessages] = useState([
+        {
+            role: 'assistant',
+            content: "Bonjour. Je suis l'assistant paie de Jariniou. Je peux calculer des salaires, générer des fiches de paie, détecter des anomalies ou répondre à vos questions sur la paie."
+        }
+    ])
+    const [input, setInput] = useState('')
+    const [chargement, setChargement] = useState(false)
+    const chatEndRef = useRef(null)
+
+    useEffect(() => {
+        chatEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+    }, [messages])
+
+    const envoyer = async () => {
+        if (!input.trim() || chargement) return
+        const userMsg = { role: 'user', content: input }
+        const nouveauxMessages = [...messages, userMsg]
+        setMessages(nouveauxMessages)
+        setInput('')
+        setChargement(true)
+
+        try {
+            const res = await Service_PaieIA.chat(nouveauxMessages, sessionId)
+            setMessages(prev => [...prev, {
+                role: 'assistant',
+                content: res.data.reponse
+            }])
+            // Rafraîchir la liste si une fiche a été générée ou supprimée
+            if (res.data.rafraichir) {
+                onRafraichir()
+            }
+        } catch {
+            setMessages(prev => [...prev, {
+                role: 'assistant',
+                content: "Erreur de connexion avec l'assistant."
+            }])
+        } finally {
+            setChargement(false)
+        }
+    }
+
+    const suggestions = [
+        "Calcule le salaire net de Moussa Sarr",
+        "Quels employés n'ont pas de fiche pour mai 2026 ?",
+        "Quelle est la masse salariale totale ?",
+        "Génère la fiche de paie de Fatoumata Sow pour mai 2026"
+    ]
+
+    return (
+        <div
+            style={{
+                position: 'fixed',
+                bottom: 24,
+                right: 24,
+                width: 680,
+                height: 840,
+                zIndex: 1050,
+                display: 'flex',
+                flexDirection: 'column',
+                borderRadius: 12,
+                boxShadow: '0 8px 32px rgba(0,0,0,0.18)',
+                background: '#fff',
+                border: '1px solid #e0e0e0',
+                overflow: 'hidden'
+            }}
+        >
+            {/* Header */}
+            <div style={{
+                background: 'var(--couleur-principale, #0d6efd)',
+                color: '#fff',
+                padding: '12px 16px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                flexShrink: 0
+            }}>
+                <div className="d-flex align-items-center gap-2">
+                    <i className="bi bi-robot fs-5"></i>
+                    <div>
+                        <div className="fw-semibold" style={{ fontSize: 14 }}>Assistant Paie IA</div>
+                        <div style={{ fontSize: 11, opacity: 0.8 }}>Jariniou · GPT-4o mini</div>
+                    </div>
+                </div>
+                <button
+                    onClick={onFermer}
+                    style={{
+                        background: 'rgba(255,255,255,0.2)',
+                        border: 'none',
+                        borderRadius: 6,
+                        color: '#fff',
+                        width: 28,
+                        height: 28,
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center'
+                    }}
+                >
+                    <i className="bi bi-x" style={{ fontSize: 16 }}></i>
+                </button>
+            </div>
+
+            {/* Messages */}
+            <div style={{
+                flex: 1,
+                overflowY: 'auto',
+                padding: '12px 14px',
+                background: '#f8f9fa',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 10
+            }}>
+                {messages.map((m, i) => (
+                    <div key={i} style={{
+                        display: 'flex',
+                        justifyContent: m.role === 'user' ? 'flex-end' : 'flex-start'
+                    }}>
+                        <div style={{
+                            maxWidth: '85%',
+                            padding: '10px 14px',
+                            borderRadius: m.role === 'user' ? '12px 12px 2px 12px' : '12px 12px 12px 2px',
+                            background: m.role === 'user' ? 'var(--couleur-principale, #0d6efd)' : '#fff',
+                            color: m.role === 'user' ? '#fff' : '#212529',
+                            fontSize: 15,
+                            lineHeight: 1.6,
+                            boxShadow: '0 1px 4px rgba(0,0,0,0.08)',
+                            whiteSpace: 'pre-wrap',
+                            wordBreak: 'break-word'
+                        }}>
+                            {m.content}
+                        </div>
+                    </div>
+                ))}
+
+                {chargement && (
+                    <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
+                        <div style={{
+                            padding: '8px 14px',
+                            borderRadius: '12px 12px 12px 2px',
+                            background: '#fff',
+                            boxShadow: '0 1px 4px rgba(0,0,0,0.08)',
+                            display: 'flex',
+                            gap: 4,
+                            alignItems: 'center'
+                        }}>
+                            {[0, 0.2, 0.4].map((d, i) => (
+                                <div key={i} style={{
+                                    width: 6, height: 6, borderRadius: '50%',
+                                    background: '#adb5bd',
+                                    animation: `pulse 1s infinite ${d}s`
+                                }} />
+                            ))}
+                        </div>
+                    </div>
+                )}
+
+                {/* Suggestions si premier message */}
+                {messages.length === 1 && (
+                    <div style={{ marginTop: 4 }}>
+                        <div style={{ fontSize: 11, color: '#6c757d', marginBottom: 6 }}>
+                            Suggestions :
+                        </div>
+                        {suggestions.map((s, i) => (
+                            <button
+                                key={i}
+                                onClick={() => setInput(s)}
+                                style={{
+                                    display: 'block',
+                                    width: '100%',
+                                    textAlign: 'left',
+                                    background: '#fff',
+                                    border: '1px solid #dee2e6',
+                                    borderRadius: 8,
+                                    padding: '6px 10px',
+                                    fontSize: 14,
+                                    color: '#495057',
+                                    cursor: 'pointer',
+                                    marginBottom: 4
+                                }}
+                            >
+                                <i className="bi bi-arrow-right me-1 text-primary" style={{ fontSize: 10 }}></i>
+                                {s}
+                            </button>
+                        ))}
+                    </div>
+                )}
+
+                <div ref={chatEndRef} />
+            </div>
+
+            {/* Saisie */}
+            <div style={{
+                padding: '10px 12px',
+                borderTop: '1px solid #e9ecef',
+                background: '#fff',
+                flexShrink: 0
+            }}>
+                <div style={{ display: 'flex', gap: 8 }}>
+                    <input
+                        type="text"
+                        value={input}
+                        onChange={e => setInput(e.target.value)}
+                        onKeyDown={e => e.key === 'Enter' && envoyer()}
+                        placeholder="Posez une question sur la paie..."
+                        disabled={chargement}
+                        style={{
+                            flex: 1,
+                            border: '1px solid #dee2e6',
+                            borderRadius: 8,
+                            padding: '9px 12px',
+                            fontSize: 15,
+                            outline: 'none'
+                        }}
+                    />
+                    <button
+                        onClick={envoyer}
+                        disabled={chargement || !input.trim()}
+                        style={{
+                            background: 'var(--couleur-principale, #0d6efd)',
+                            border: 'none',
+                            borderRadius: 8,
+                            color: '#fff',
+                            width: 36,
+                            height: 36,
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            opacity: (chargement || !input.trim()) ? 0.5 : 1
+                        }}
+                    >
+                        <i className="bi bi-send-fill" style={{ fontSize: 13 }}></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    )
+}
+
+// ─── Bouton flottant ──────────────────────────────────────────
+function BoutonAgentPaie({ onClick, actif }) {
+    return (
+        <button
+            onClick={onClick}
+            title="Assistant Paie IA"
+            style={{
+                position: 'fixed',
+                bottom: 24,
+                right: 24,
+                width: 60,
+                height: 60,
+                borderRadius: '50%',
+                background: actif ? '#6c757d' : 'var(--couleur-principale, #0d6efd)',
+                border: 'none',
+                color: '#fff',
+                fontSize: 24,
+                cursor: 'pointer',
+                boxShadow: '0 4px 16px rgba(0,0,0,0.2)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                zIndex: 1049,
+                transition: 'all 0.2s'
+            }}
+        >
+            <i className={`bi ${actif ? 'bi-x-lg' : 'bi-robot'}`}></i>
+        </button>
+    )
+}
+
+// ─── Page principale ──────────────────────────────────────────
 export default function Page_ListeFichesPaie() {
     const [fiches, setFiches] = useState([])
     const [chargement, setChargement] = useState(true)
@@ -14,6 +291,7 @@ export default function Page_ListeFichesPaie() {
     const [filtreMois, setFiltreMois] = useState('')
     const [filtreAnnee, setFiltreAnnee] = useState('')
     const [afficherFormulaire, setAfficherFormulaire] = useState(false)
+    const [agentOuvert, setAgentOuvert] = useState(false)   // ← NOUVEAU
 
     const chargerFiches = async () => {
         try {
@@ -36,7 +314,6 @@ export default function Page_ListeFichesPaie() {
         return okRecherche && okMois && okAnnee
     })
 
-    // Calculs stats
     const totalBrut = filtres.reduce((s, f) => s + parseFloat(f.salaire_brut || 0), 0)
     const totalNet = filtres.reduce((s, f) => s + parseFloat(f.salaire_net || 0), 0)
 
@@ -231,11 +508,24 @@ export default function Page_ListeFichesPaie() {
                     }}
                 />
             )}
+
+            {/* ── Agent IA Paie ── */}
+            {agentOuvert ? (
+                <AgentPaiePanel
+                    onFermer={() => setAgentOuvert(false)}
+                    onRafraichir={chargerFiches}
+                />
+            ) : (
+                <BoutonAgentPaie
+                    onClick={() => setAgentOuvert(true)}
+                    actif={false}
+                />
+            )}
         </div>
     )
 }
 
-// ─── Formulaire d'ajout ───────────────────────────────────────
+// ─── Formulaire d'ajout (identique à l'original) ─────────────
 function Form_AjoutFiche({ onFermer, onSuccess }) {
     const [employes, setEmployes] = useState([])
     const [erreur, setErreur] = useState('')
@@ -258,18 +548,16 @@ function Form_AjoutFiche({ onFermer, onSuccess }) {
         const { name, value } = e.target
         setForm(prev => ({ ...prev, [name]: value }))
 
-        // Auto-remplir le salaire brut quand on sélectionne un employé
         if (name === 'employe_id') {
             const emp = employes.find(e => e.id === value)
             if (emp) {
                 const brut = parseFloat(emp.salaire_base_contrat)
-                const net = (brut * 0.85).toFixed(2) // 15% de cotisations par défaut
+                const net = (brut * 0.85).toFixed(2)
                 setEmployeSelectionne(emp)
                 setForm(prev => ({ ...prev, employe_id: value, salaire_brut: brut, salaire_net: net }))
             }
         }
 
-        // Recalcule le net si on change le brut
         if (name === 'salaire_brut') {
             const net = (parseFloat(value) * 0.85).toFixed(2)
             setForm(prev => ({ ...prev, salaire_brut: value, salaire_net: net }))
@@ -319,20 +607,12 @@ function Form_AjoutFiche({ onFermer, onSuccess }) {
                         )}
 
                         <form onSubmit={handleSubmit} id="form-fiche">
-
-                            {/* Sélection employé */}
                             <h6 className="fw-bold text-primary border-bottom pb-2 mb-3">
                                 <i className="bi bi-person me-2"></i>Employé
                             </h6>
                             <div className="mb-4">
                                 <label className="form-label">Sélectionner un employé *</label>
-                                <select
-                                    name="employe_id"
-                                    className="form-select"
-                                    value={form.employe_id}
-                                    onChange={handleChange}
-                                    required
-                                >
+                                <select name="employe_id" className="form-select" value={form.employe_id} onChange={handleChange} required>
                                     <option value="">-- Choisir un employé --</option>
                                     {employes.map(e => (
                                         <option key={e.id} value={e.id}>
@@ -340,8 +620,6 @@ function Form_AjoutFiche({ onFermer, onSuccess }) {
                                         </option>
                                     ))}
                                 </select>
-
-                                {/* Infos employé sélectionné */}
                                 {employeSelectionne && (
                                     <div className="alert alert-light border mt-2 py-2 small">
                                         <i className="bi bi-info-circle me-2 text-primary"></i>
@@ -353,7 +631,6 @@ function Form_AjoutFiche({ onFermer, onSuccess }) {
                                 )}
                             </div>
 
-                            {/* Période */}
                             <h6 className="fw-bold text-primary border-bottom pb-2 mb-3">
                                 <i className="bi bi-calendar me-2"></i>Période
                             </h6>
@@ -361,9 +638,7 @@ function Form_AjoutFiche({ onFermer, onSuccess }) {
                                 <div className="col-md-6">
                                     <label className="form-label">Mois *</label>
                                     <select name="periode_mois" className="form-select" value={form.periode_mois} onChange={handleChange} required>
-                                        {['Janvier','Février','Mars','Avril','Mai','Juin',
-                                          'Juillet','Août','Septembre','Octobre','Novembre','Décembre'
-                                        ].map((m, i) => (
+                                        {MOIS.map((m, i) => (
                                             <option key={i} value={i + 1}>{m}</option>
                                         ))}
                                     </select>
@@ -378,46 +653,26 @@ function Form_AjoutFiche({ onFermer, onSuccess }) {
                                 </div>
                             </div>
 
-                            {/* Salaires */}
                             <h6 className="fw-bold text-primary border-bottom pb-2 mb-3">
                                 <i className="bi bi-cash me-2"></i>Salaires
                             </h6>
                             <div className="row g-3 mb-3">
                                 <div className="col-md-6">
                                     <label className="form-label">Salaire brut (FCFA) *</label>
-                                    <input
-                                        type="number"
-                                        name="salaire_brut"
-                                        className="form-control"
-                                        value={form.salaire_brut}
-                                        onChange={handleChange}
-                                        required min="0"
-                                        placeholder="ex: 450000"
-                                    />
+                                    <input type="number" name="salaire_brut" className="form-control" value={form.salaire_brut} onChange={handleChange} required min="0" placeholder="ex: 450000" />
                                 </div>
                                 <div className="col-md-6">
                                     <label className="form-label">Salaire net (FCFA) *</label>
-                                    <input
-                                        type="number"
-                                        name="salaire_net"
-                                        className="form-control"
-                                        value={form.salaire_net}
-                                        onChange={handleChange}
-                                        required min="0"
-                                        placeholder="Calculé automatiquement"
-                                    />
+                                    <input type="number" name="salaire_net" className="form-control" value={form.salaire_net} onChange={handleChange} required min="0" placeholder="Calculé automatiquement" />
                                 </div>
                             </div>
 
-                            {/* Récapitulatif */}
                             {form.salaire_brut && form.salaire_net && (
                                 <div className="card bg-light border-0 p-3">
                                     <div className="row text-center">
                                         <div className="col-4">
                                             <div className="text-muted small">Brut</div>
-                                            <div className="fw-bold">
-                                                {parseFloat(form.salaire_brut).toLocaleString('fr-FR')} FCFA
-                                            </div>
+                                            <div className="fw-bold">{parseFloat(form.salaire_brut).toLocaleString('fr-FR')} FCFA</div>
                                         </div>
                                         <div className="col-4">
                                             <div className="text-muted small">Cotisations</div>
@@ -425,9 +680,7 @@ function Form_AjoutFiche({ onFermer, onSuccess }) {
                                         </div>
                                         <div className="col-4">
                                             <div className="text-muted small">Net à payer</div>
-                                            <div className="fw-bold text-success">
-                                                {parseFloat(form.salaire_net).toLocaleString('fr-FR')} FCFA
-                                            </div>
+                                            <div className="fw-bold text-success">{parseFloat(form.salaire_net).toLocaleString('fr-FR')} FCFA</div>
                                         </div>
                                     </div>
                                 </div>
@@ -439,12 +692,7 @@ function Form_AjoutFiche({ onFermer, onSuccess }) {
                         <button className="btn btn-secondary" onClick={onFermer}>
                             <i className="bi bi-x me-2"></i>Annuler
                         </button>
-                        <button
-                            type="submit"
-                            form="form-fiche"
-                            className="btn btn-primary"
-                            disabled={chargement}
-                        >
+                        <button type="submit" form="form-fiche" className="btn btn-primary" disabled={chargement}>
                             {chargement
                                 ? <><span className="spinner-border spinner-border-sm me-2"></span>Génération...</>
                                 : <><i className="bi bi-check2 me-2"></i>Générer la fiche</>
