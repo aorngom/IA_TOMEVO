@@ -27,9 +27,23 @@ def detail_fiche(fiche_id: str, db: Session = Depends(get_db)):
 def fiches_par_employe(employe_id: str, db: Session = Depends(get_db)):
     return obtenir_fiches_par_employe(db, employe_id)
 
+from app.services.Service_PaieIA import calculer_salaire_complet, sauvegarder_fiche_calculee
+
 @router.post("/", response_model=FichePaieReponse)
 def creer(donnees: FichePaieCreation, db: Session = Depends(get_db)):
-    return creer_fiche(db, donnees)
+    try:
+        calcul = calculer_salaire_complet(
+            db,
+            str(donnees.employe_id),
+            donnees.periode_mois,
+            donnees.periode_annee
+        )
+        fiche_id = sauvegarder_fiche_calculee(db, calcul)
+        return obtenir_fiche_par_id(db, fiche_id)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @router.delete("/{fiche_id}")
 def supprimer(fiche_id: str, db: Session = Depends(get_db)):

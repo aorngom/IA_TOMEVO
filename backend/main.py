@@ -15,6 +15,7 @@ from app.routes.Route_Ocr import router as ocr_router
 from app.routes.Route_ConversationIA import router as conversation_router
 from app.routes.Route_Reunion import router as reunion_router
 from app.routes.Route_PaieIA import router as paie_ia_router
+from app.services.Service_Scheduler import demarrer_scheduler, arreter_scheduler
 app = FastAPI(title="Poulet App API", version="1.0.0")
 
 # 3. Configuration du Middleware CORS
@@ -39,9 +40,14 @@ app.include_router(paie_ia_router, prefix="/paie-ia")
 @app.on_event("startup")
 async def startup_event():
     if os.getenv("GROQ_API_KEY"):
-        print(" Configuration : Clé Groq détectée.")
+        print("Configuration : Clé détectée.")
     else:
-        print(" Attention : Clé GROQ_API_KEY manquante dans le fichier .env")
+        print("Attention : Clé API manquante dans le fichier .env")
+    demarrer_scheduler()
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    arreter_scheduler()
 
 @app.get("/")
 def racine():

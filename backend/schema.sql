@@ -837,3 +837,94 @@ CREATE INDEX IF NOT EXISTS idx_employe_champ_employe ON employe_champ_personnali
 CREATE INDEX IF NOT EXISTS idx_contrat_financement_contrat ON contrat_financement(contrat_id);
 CREATE INDEX IF NOT EXISTS idx_ligne_bulletin_fiche ON ligne_bulletin_paie(fiche_paie_id);
 CREATE INDEX IF NOT EXISTS idx_element_paie_code ON element_paie(code);
+
+ALTER TABLE fiche_paie
+ADD COLUMN IF NOT EXISTS fichier_pdf VARCHAR(255),
+ADD COLUMN IF NOT EXISTS note_changement TEXT,
+ADD COLUMN IF NOT EXISTS est_envoyee BOOLEAN DEFAULT FALSE,
+ADD COLUMN IF NOT EXISTS date_envoi TIMESTAMP WITH TIME ZONE,
+ADD COLUMN IF NOT EXISTS prime_transport DECIMAL(12,2) DEFAULT 0,
+ADD COLUMN IF NOT EXISTS prime_logement DECIMAL(12,2) DEFAULT 0,
+ADD COLUMN IF NOT EXISTS prime_autres DECIMAL(12,2) DEFAULT 0,
+ADD COLUMN IF NOT EXISTS retenue_absence DECIMAL(12,2) DEFAULT 0,
+ADD COLUMN IF NOT EXISTS ipres_salariale DECIMAL(12,2) DEFAULT 0,
+ADD COLUMN IF NOT EXISTS ipres_patronale DECIMAL(12,2) DEFAULT 0,
+ADD COLUMN IF NOT EXISTS ir DECIMAL(12,2) DEFAULT 0,
+ADD COLUMN IF NOT EXISTS css_pf DECIMAL(12,2) DEFAULT 0,
+ADD COLUMN IF NOT EXISTS css_at DECIMAL(12,2) DEFAULT 0,
+ADD COLUMN IF NOT EXISTS cfe DECIMAL(12,2) DEFAULT 0;
+
+CREATE TABLE IF NOT EXISTS config_paie (
+    id SERIAL PRIMARY KEY,
+    jour_declenchement INT DEFAULT 28,
+    heure_declenchement TIME DEFAULT '23:00:00',
+    actif BOOLEAN DEFAULT TRUE,
+    derniere_execution TIMESTAMP WITH TIME ZONE,
+    prochain_run TIMESTAMP WITH TIME ZONE,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Une seule ligne de config
+INSERT INTO config_paie (jour_declenchement, heure_declenchement)
+VALUES (28, '23:00:00');
+
+CREATE TABLE IF NOT EXISTS log_paie (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    type_execution VARCHAR(20) CHECK (type_execution IN ('automatique', 'manuelle', 'test')),
+    periode_mois INT,
+    periode_annee INT,
+    nb_fiches_generees INT DEFAULT 0,
+    nb_mails_envoyes INT DEFAULT 0,
+    nb_erreurs INT DEFAULT 0,
+    details JSONB,
+    declenche_par VARCHAR(100),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE pays (
+    id SERIAL PRIMARY KEY,
+    code VARCHAR(5) NOT NULL UNIQUE,  -- 'SN', 'CI', 'CM', 'FR'...
+    libelle VARCHAR(100) NOT NULL,
+    devise VARCHAR(20) DEFAULT 'FCFA',
+    symbole_devise VARCHAR(5) DEFAULT 'FCFA'
+);
+
+ALTER TABLE cotisation_ref
+ADD COLUMN pays_id INT REFERENCES pays(id),
+ADD COLUMN taux_salarial DECIMAL(18,4) DEFAULT 0,
+ADD COLUMN taux_patronal DECIMAL(18,4) DEFAULT 0,
+ADD COLUMN plafond DECIMAL(18,2),
+ADD COLUMN base_calcul VARCHAR(50) DEFAULT 'salaire_brut';
+
+CREATE TABLE tranche_ir (
+    id SERIAL PRIMARY KEY,
+    pays_id INT REFERENCES pays(id),
+    montant_min DECIMAL(18,2) NOT NULL,
+    montant_max DECIMAL(18,2),  -- NULL = pas de plafond
+    taux DECIMAL(5,2) NOT NULL,
+    est_annuel BOOLEAN DEFAULT TRUE
+);
+
+CREATE TABLE config_entreprise (
+    id SERIAL PRIMARY KEY,
+    nom_entreprise VARCHAR(255),
+    pays_id INT REFERENCES pays(id),
+    devise VARCHAR(20),
+    jour_paie INT DEFAULT 28,
+    heure_paie TIME DEFAULT '23:00:00',
+    actif BOOLEAN DEFAULT TRUE
+);
+
+UPDATE employe
+SET email_perso = 'aminataorngom34@gmail.com'
+WHERE matricule = 'EMP-001';
+
+CREATE TABLE rappel_ia (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    type VARCHAR(20) CHECK (type IN ('rappel', 'envoi_auto')),
+    date_heure TIMESTAMP WITH TIME ZONE NOT NULL,
+    message TEXT NOT NULL,
+    action JSONB,        -- contient les infos du mail à envoyer
+    statut VARCHAR(20) DEFAULT 'en_attente',
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);

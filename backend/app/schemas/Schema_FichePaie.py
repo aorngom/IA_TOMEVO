@@ -19,8 +19,8 @@ class FichePaieCreation(BaseModel):
     employe_id: uuid.UUID
     periode_mois: int
     periode_annee: int
-    salaire_brut: float
-    salaire_net: float
+    salaire_brut: Optional[float] = None
+    salaire_net: Optional[float] = None
 
 
 class FichePaieReponse(BaseModel):

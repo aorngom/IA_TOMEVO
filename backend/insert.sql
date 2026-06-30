@@ -162,3 +162,61 @@ VALUES (
     '2026-03-01',
     'Réorganisation du département Logistique pour le secteur Dakar-Plateau.'
 );
+
+-- PAYS
+INSERT INTO pays (code, libelle, devise) VALUES
+('SN', 'Sénégal', 'FCFA'),
+('CI', 'Côte d''Ivoire', 'FCFA'),
+('CM', 'Cameroun', 'FCFA'),
+('FR', 'France', 'EUR');
+
+-- COTISATIONS SÉNÉGAL
+INSERT INTO cotisation_ref 
+(libelle, code, taux_salarial, taux_patronal, description, pays_id) VALUES
+('IPRES Régime Général', 'IPRES_RG', 5.6, 8.4, 'Retraite régime général', 
+    (SELECT id FROM pays WHERE code='SN')),
+('CSS Prestations Familiales', 'CSS_PF', 0, 7.0, 'Caisse Sécurité Sociale', 
+    (SELECT id FROM pays WHERE code='SN')),
+('CSS Accidents Travail', 'CSS_AT', 0, 3.0, 'Accidents du travail', 
+    (SELECT id FROM pays WHERE code='SN')),
+('CFE', 'CFE', 0, 3.0, 'Contribution forfaitaire employeur', 
+    (SELECT id FROM pays WHERE code='SN'));
+
+-- TRANCHES IR SÉNÉGAL (annuelles)
+INSERT INTO tranche_ir (pays_id, montant_min, montant_max, taux) VALUES
+((SELECT id FROM pays WHERE code='SN'), 0, 630000, 0),
+((SELECT id FROM pays WHERE code='SN'), 630001, 1500000, 20),
+((SELECT id FROM pays WHERE code='SN'), 1500001, 4000000, 30),
+((SELECT id FROM pays WHERE code='SN'), 4000001, NULL, 40);
+
+-- TRANCHES IR CÔTE D'IVOIRE
+INSERT INTO tranche_ir (pays_id, montant_min, montant_max, taux) VALUES
+((SELECT id FROM pays WHERE code='CI'), 0, 600000, 0),
+((SELECT id FROM pays WHERE code='CI'), 600001, 1800000, 16),
+((SELECT id FROM pays WHERE code='CI'), 1800001, 3600000, 21),
+((SELECT id FROM pays WHERE code='CI'), 3600001, NULL, 24);
+
+-- CONFIG ENTREPRISE (Jariniou = Sénégal)
+INSERT INTO config_entreprise 
+(nom_entreprise, pays_id, devise, jour_paie) VALUES
+('Jariniou', (SELECT id FROM pays WHERE code='SN'), 'FCFA', 28);
+
+-- EMP-001 Moussa Sarr
+UPDATE employe SET email_perso = 'aminataorngom34@gmail.com'
+WHERE matricule = 'EMP-001';
+
+-- EMP-002 Ibrahima Fall
+UPDATE employe SET email_perso = 'oumourassoulngom05@gmail.com'
+WHERE matricule = 'EMP-002';
+
+-- EMP-003 Awa Ndiaye
+UPDATE employe SET email_perso = 'aminataorngom34@gmail.com'
+WHERE matricule = 'EMP-003';
+
+-- EMP-004 Ousmane Gueye
+UPDATE employe SET email_perso = 'oumourassoulngom05@gmail.com'
+WHERE matricule = 'EMP-004';
+
+-- EMP-005 Fatoumata Sow
+UPDATE employe SET email_perso = 'aminataorngom34@gmail.com'
+WHERE matricule = 'EMP-005';
